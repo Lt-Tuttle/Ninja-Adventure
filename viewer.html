@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninja Adventure Asset Viewer</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #334155;
+            --input-bg: #0f172a;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            overflow-y: scroll;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            font-weight: 700;
+            background: linear-gradient(to right, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        select, button, input {
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        button.primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        button.primary:hover {
+            background-color: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .stats {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        main {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: var(--accent);
+        }
+
+        .card-preview {
+            height: 200px;
+            background-image: linear-gradient(45deg, #1e293b 25%, #0f172a 25%, #0f172a 50%, #1e293b 50%, #1e293b 75%, #0f172a 75%, #0f172a 100%);
+            background-size: 20px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            position: relative;
+        }
+
+        .card-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated; /* Crucial for pixel art */
+        }
+
+        .card-content {
+            padding: 1rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 0.875rem;
+            word-break: break-all;
+            color: var(--text-primary);
+        }
+
+        .card-meta {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+
+        .tag {
+            font-size: 0.7rem;
+            padding: 0.125rem 0.375rem;
+            border-radius: 9999px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border);
+        }
+
+        .tag.broken {
+            border-color: var(--danger);
+            color: var(--danger);
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+
+        .tag.mismatch {
+            border-color: #fbbf24;
+            color: #fbbf24;
+            background-color: rgba(251, 191, 36, 0.1);
+        }
+
+        .note-input {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            resize: vertical;
+            margin-top: auto;
+            min-height: 2.5rem;
+        }
+
+        .note-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Status indicators on card */
+        .status-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background-color: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .status-badge.error { color: var(--danger); }
+        .status-badge.warn { color: #fbbf24; }
+        
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: var(--success);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transform: translateY(150%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 200;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        .filter-scroller {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            scrollbar-width: thin;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Asset Viewer</h1>
+        <div class="stats" id="statsDisplay">Loading...</div>
+    </div>
+    <div class="controls">
+        <input type="text" id="searchInput" placeholder="Search paths..." style="width: 200px;">
+        <select id="filterSelect" onchange="filterAssets()">
+            <option value="all">All Assets</option>
+            <option value="broken">Broken / Missing</option>
+            <option value="warning">Warnings</option>
+            <option value="faceset">Faceset</option>
+            <option value="strip">Animation Strip</option>
+        </select>
+        <button class="primary" onclick="exportManifest()">Export JSON</button>
+    </div>
+</header>
+
+<main id="grid">
+    <!-- Cards injected here -->
+</main>
+
+<div id="toast" class="toast">Manifest Exported!</div>
+
+<script>
+    let manifestData = [];
+    let filteredData = [];
+    
+    // --- Data Loading ---
+    async function loadManifest() {
+        try {
+            const response = await fetch('asset_manifest.json');
+            if (!response.ok) throw new Error('Failed to load asset_manifest.json');
+            manifestData = await response.json();
+            
+            // Add internal tracking for modified state if needed
+            // Ensure tags array exists
+            manifestData.forEach(item => {
+                if (!item.tags) item.tags = [];
+            });
+
+            renderGrid(manifestData);
+            updateStats();
+        } catch (err) {
+            document.getElementById('grid').innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger);">Error: ${err.message}</div>`;
+        }
+    }
+
+    // --- Rendering ---
+    function renderGrid(assets) {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        
+        // Limit rendering for performance if massive, but 20k is a lot for DOM.
+        // Let's implement lazy rendering or pagination ideally.
+        // For now, let's limit to first 100 or implement scroll observer?
+        // Let's simple check: if > 500 render first 500 and show warning?
+        // Actually, let's just render all. Modern browsers can handle a few thousand nodes, but 21k lines could mean ~2k assets.
+        // Let's see... 21k lines / ~15 lines per obj ~= 1400 assets. That's fine.
+        
+        assets.forEach((asset, index) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const isBroken = asset.tags.includes('BROKEN_IN_VIEWER');
+            const hasWarning = asset.tags.some(t => t.includes('MISMATCH'));
+
+            let tagsHtml = asset.tags.map(t => {
+                let cls = 'tag';
+                if (t === 'BROKEN_IN_VIEWER') cls += ' broken';
+                if (t.includes('MISMATCH')) cls += ' mismatch';
+                return `<span class="${cls}">${t}</span>`;
+            }).join('');
+
+            // Image handler
+            // Use onerror to detect broken links and auto-update model
+            card.innerHTML = `
+                <div class="card-preview">
+                    <img src="${asset.path}" loading="lazy" 
+                        onload="validateImage(this, ${index})" 
+                        onerror="markBroken(this, ${index})" 
+                        alt="${asset.type}">
+                    ${isBroken ? '<div class="status-badge error">BROKEN</div>' : ''}
+                </div>
+                <div class="card-content">
+                    <div class="card-title" title="${asset.path}">${asset.path.split('/').pop()}</div>
+                    <div class="card-meta">
+                        <span>Type:</span> <span>${asset.type}</span>
+                        <span>Size:</span> <span id="dims-${index}">${asset.width}x${asset.height}</span>
+                        <span>Frames:</span> <span>${asset.frames}</span>
+                    </div>
+                    <div class="tag-container" id="tags-${index}">
+                        ${tagsHtml}
+                    </div>
+                    <textarea class="note-input" placeholder="Notes..." onchange="updateNote(${index}, this.value)">${asset.notes || ''}</textarea>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // --- Logic ---
+    function markBroken(imgEl, index) {
+        const asset = filteredData.length > 0 ? filteredData[index] : manifestData[index];
+        // Find actual index in main data if filtered
+        const realIndex = manifestData.indexOf(asset);
+        
+        if (!manifestData[realIndex].tags.includes('BROKEN_IN_VIEWER')) {
+            manifestData[realIndex].tags.push('BROKEN_IN_VIEWER');
+            // Re-render this specific card's tags or badge?
+            // For now, just styling update
+            const parent = imgEl.parentElement;
+            if (!parent.querySelector('.status-badge')) {
+                parent.insertAdjacentHTML('beforeend', '<div class="status-badge error">BROKEN</div>');
+            }
+            // Update tag list visual
+            refreshTags(realIndex, index);
+        }
+        imgEl.style.opacity = '0.3';
+    }
+
+    function validateImage(imgEl, index) {
+        const asset = filteredData.length > 0 ? filteredData[index] : manifestData[index];
+        const realIndex = manifestData.indexOf(asset);
+
+        // Check dimensions
+        if (imgEl.naturalWidth !== asset.width || imgEl.naturalHeight !== asset.height) {
+            const mismatchTag = `DIMENSION_MISMATCH_${imgEl.naturalWidth}x${imgEl.naturalHeight}`;
+            if (!manifestData[realIndex].tags.some(t => t.includes('DIMENSION_MISMATCH'))) {
+                 manifestData[realIndex].tags.push(mismatchTag);
+                 refreshTags(realIndex, index);
+            }
+        }
+        
+        // Remove BROKEN tag if it loads
+        if (manifestData[realIndex].tags.includes('BROKEN_IN_VIEWER')) {
+            manifestData[realIndex].tags = manifestData[realIndex].tags.filter(t => t !== 'BROKEN_IN_VIEWER');
+            refreshTags(realIndex, index);
+        }
+    }
+
+    function refreshTags(realIndex, displayIndex) {
+        const container = document.getElementById(`tags-${displayIndex}`);
+        if (!container) return; // might be filtered out
+        
+        const tags = manifestData[realIndex].tags;
+        container.innerHTML = tags.map(t => {
+                let cls = 'tag';
+                if (t === 'BROKEN_IN_VIEWER') cls += ' broken';
+                if (t.includes('MISMATCH')) cls += ' mismatch';
+                return `<span class="${cls}">${t}</span>`;
+            }).join('');
+    }
+
+    function updateNote(displayIndex, value) {
+        const asset = filteredData.length > 0 ? filteredData[displayIndex] : manifestData[displayIndex];
+        const realIndex = manifestData.indexOf(asset);
+        manifestData[realIndex].notes = value;
+    }
+
+    function filterAssets() {
+        const filter = document.getElementById('filterSelect').value;
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        
+        filteredData = manifestData.filter(asset => {
+            const matchesSearch = asset.path.toLowerCase().includes(search);
+            if (!matchesSearch) return false;
+
+            if (filter === 'all') return true;
+            if (filter === 'broken') return asset.tags.includes('BROKEN_IN_VIEWER');
+            if (filter === 'warning') return asset.tags.some(t => t.includes('MISMATCH'));
+            if (filter === 'faceset') return asset.type === 'Faceset';
+            if (filter === 'strip') return asset.type === 'Animation Strip';
+            
+            return true;
+        });
+        
+        renderGrid(filteredData);
+    }
+    
+    document.getElementById('searchInput').addEventListener('input', filterAssets);
+
+    function updateStats() {
+        const count = manifestData.length;
+        document.getElementById('statsDisplay').textContent = `${count} Assets Loaded`;
+    }
+
+    function exportManifest() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(manifestData, null, 4));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "asset_manifest_updated.json");
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Initialize
+    loadManifest();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninja Adventure Tileset Inspector</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --sidebar-bg: #1e293b;
+            --panel-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --border: #334155;
+            --highlight: rgba(59, 130, 246, 0.5);
+            --grid-color: rgba(255, 255, 255, 0.3);
+            --selected-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar - Tileset List */
+        aside.left-sidebar {
+            width: 250px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        /* Sidebar - Annotation Panel */
+        aside.right-sidebar {
+            width: 300px;
+            background-color: var(--panel-bg);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h2 { margin: 0; font-size: 1.1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+        h3 { margin: 0 0 0.5rem 0; font-size: 1rem; }
+
+        .search-box {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        #tilesetList {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .list-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+
+        .list-item:hover { background-color: rgba(255,255,255,0.05); }
+        .list-item.active { background-color: var(--accent); color: white; }
+
+        /* Main View */
+        main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .toolbar {
+            padding: 0.75rem 1rem;
+            background-color: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .viewport {
+            flex-grow: 1;
+            overflow: auto;
+            background-color: #0c1220; /* Darker than bg */
+            display: grid; 
+            place-items: center;
+            /* pattern */
+            background-image: radial-gradient(#1e293b 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Canvas Container */
+        .canvas-container {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            background: transparent;
+            image-rendering: pixelated; 
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+        }
+
+        img.tileset-img {
+            display: block;
+            pointer-events: none;
+        }
+
+        /* Grid Overlay */
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            background-size: 16px 16px;
+            background-image: 
+                linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .grid-overlay.visible { opacity: 1; }
+
+        /* Highlight box for hover */
+        .cursor-box {
+            position: absolute;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+            display: none;
+            box-sizing: border-box;
+            background-color: rgba(255, 255, 255, 0.1);
+            z-index: 5;
+        }
+        
+        /* Highlight box for selection */
+        .selection-box {
+            position: absolute;
+            border: 2px solid var(--selected-color);
+            pointer-events: none;
+            display: none;
+            box-sizing: border-box;
+            background-color: rgba(239, 68, 68, 0.1);
+            z-index: 6;
+        }
+
+        /* Form Controls */
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+        
+        select, input[type="text"], input[type="number"], button {
+            width: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+
+        button.primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        button.primary:hover { background-color: #2563eb; }
+
+        .tag-editor {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            padding: 0.25rem;
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            min-height: 2.5rem;
+        }
+        
+        .tag-pill {
+            background: var(--accent);
+            color: white;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .tag-pill span { cursor: pointer; opacity: 0.7; }
+        .tag-pill span:hover { opacity: 1; }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Footer Info */
+        .footer-info {
+           position: absolute;
+           bottom: 0;
+           left: 0;
+           right: 0;
+           background: rgba(15, 23, 42, 0.9);
+           padding: 0.5rem 1rem;
+           font-family: monospace;
+           font-size: 0.8rem;
+           border-top: 1px solid var(--border);
+           pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+<aside class="left-sidebar">
+    <div class="sidebar-header">
+        <h2>Tilesets</h2>
+        <input type="text" class="search-box" placeholder="Filter..." oninput="renderList(this.value)">
+    </div>
+    <div id="tilesetList"></div>
+</aside>
+
+<main>
+    <div class="toolbar">
+        <div class="form-group" style="margin:0">
+            <label style="display:inline; margin-right:0.5rem">Grid:</label>
+            <input type="checkbox" id="showGrid" onchange="updateGrid()" checked>
+            <input type="number" id="gridSizeW" value="16" min="1" onchange="updateGrid()" style="width:50px"> x 
+            <input type="number" id="gridSizeH" value="16" min="1" onchange="updateGrid()" style="width:50px">
+        </div>
+
+        <div class="zoom-controls">
+            <label>Zoom:</label>
+            <button onclick="changeZoom(-0.5)">-</button>
+            <span id="zoomLabel">100%</span>
+            <button onclick="changeZoom(0.5)">+</button>
+            <button onclick="resetZoom()">Reset</button>
+        </div>
+        
+        <div style="flex-grow:1"></div>
+        <button class="primary" style="width:auto" onclick="exportDefinitions()">Export Definitions</button>
+    </div>
+    
+    <div class="viewport" id="viewport">
+        <div class="canvas-container" id="container">
+            <img id="image" class="tileset-img" src="" onload="onImageLoad()">
+            <div id="grid" class="grid-overlay visible"></div>
+            <div id="cursor" class="cursor-box"></div>
+            <div id="selection" class="selection-box"></div>
+        </div>
+    </div>
+    
+    <div class="footer-info">
+        <span id="coord-info">Hover for coords</span>
+    </div>
+</main>
+
+<aside class="right-sidebar">
+    <div class="sidebar-header">
+        <h2>Properties</h2>
+    </div>
+    
+    <div id="no-selection" style="color: var(--text-secondary); text-align: center; padding-top: 2rem;">
+        Select a tile to edit properties
+    </div>
+
+    <div id="editor" style="display:none; flex-direction:column; gap:1rem;">
+        <div class="form-group">
+            <label>Selected ID</label>
+            <input type="text" id="prop-id" disabled style="opacity: 0.5;">
+        </div>
+
+        <div class="form-group">
+            <label>Category</label>
+            <select id="prop-category" onchange="saveCurrentTile()">
+                <option value="Ground">Ground</option>
+                <option value="Wall">Wall</option>
+                <option value="Object">Object</option>
+                <option value="Water">Water</option>
+                <option value="Sky">Sky</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Collision</label>
+            <select id="prop-collision" onchange="saveCurrentTile()">
+                <option value="None">None</option>
+                <option value="Solid">Solid</option>
+                <option value="Platform">Platform (One-way)</option>
+                <option value="Trigger">Trigger Zone</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Tags (comma separated)</label>
+            <input type="text" id="prop-tags" placeholder="e.g. grass, flower, corner" onchange="saveCurrentTile()">
+        </div>
+        
+        <div style="margin-top:auto">
+            <button onclick="clearCurrentTile()" style="background-color: var(--sidebar-bg); border-color: var(--border);">Reset Tile Data</button>
+        </div>
+    </div>
+</aside>
+
+<script>
+    // State
+    let manifestData = [];
+    let tileDefinitions = {}; // { "TilesetName": { "TileID": { ... } } }
+    
+    let currentAsset = null;
+    let currentTileId = null;
+    
+    let gridW = 16;
+    let gridH = 16;
+    let cols = 0;
+    
+    let zoomLevel = 1;
+    let isDragging = false;
+    
+    // --- Init ---
+    async function init() {
+        try {
+            const res = await fetch('asset_manifest.json');
+            const data = await res.json();
+            manifestData = data.filter(a => a.type === 'Tileset' || (a.tags && a.tags.includes('Tileset')));
+            renderList();
+            
+            // Try to load existing definitions if you implemented persistence (not yet)
+            // For now, tileDefinitions starts empty
+        } catch (e) {
+            console.error(e);
+            alert('Failed to load asset_manifest.json');
+        }
+    }
+
+    // --- Tileset List ---
+    function renderList(filter = '') {
+        const list = document.getElementById('tilesetList');
+        list.innerHTML = '';
+        
+        manifestData.forEach((asset, idx) => {
+            const name = asset.path.split('/').pop();
+            if (filter && !name.toLowerCase().includes(filter.toLowerCase())) return;
+
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.textContent = name;
+            div.onclick = () => loadAsset(asset, div);
+            list.appendChild(div);
+        });
+    }
+
+    function loadAsset(asset, el) {
+        document.querySelectorAll('.list-item').forEach(d => d.classList.remove('active'));
+        if (el) el.classList.add('active');
+        
+        currentAsset = asset;
+        const img = document.getElementById('image');
+        img.src = asset.path;
+        
+        // Deselect
+        selectTile(null);
+        
+        // Reset Zoom
+        resetZoom();
+
+        // Ensure definition container exists
+        const assetName = getAssetName(asset);
+        if (!tileDefinitions[assetName]) {
+            tileDefinitions[assetName] = {};
+        }
+    }
+    
+    function getAssetName(asset) {
+        return asset.path.split('/').pop();
+    }
+
+    // --- Viewport & Grid ---
+    function onImageLoad() {
+        const img = document.getElementById('image');
+        updateGrid();
+    }
+
+    function updateGrid() {
+        gridW = parseInt(document.getElementById('gridSizeW').value) || 16;
+        gridH = parseInt(document.getElementById('gridSizeH').value) || 16;
+        const show = document.getElementById('showGrid').checked;
+
+        const overlay = document.getElementById('grid');
+        overlay.classList.toggle('visible', show);
+        overlay.style.backgroundSize = `${gridW}px ${gridH}px`;
+        
+        const img = document.getElementById('image');
+        if (img.naturalWidth) {
+            cols = Math.floor(img.naturalWidth / gridW);
+        }
+        
+        // Re-position selection if valid
+        if (currentTileId !== null) {
+            highlightTile(currentTileId);
+        }
+    }
+
+    // --- Zoom ---
+    function changeZoom(delta) {
+        zoomLevel = Math.max(0.5, Math.min(8, zoomLevel + delta));
+        applyZoom();
+    }
+    
+    function resetZoom() {
+        zoomLevel = 1; // Default 2x usually good for pixel art?
+        if (document.getElementById('image').naturalWidth < 300) zoomLevel = 2; 
+        applyZoom();
+    }
+
+    function applyZoom() {
+        const container = document.getElementById('container');
+        container.style.transform = `scale(${zoomLevel})`;
+        document.getElementById('zoomLabel').textContent = `${Math.round(zoomLevel * 100)}%`;
+    }
+
+    // --- Interaction ---
+    const gridEl = document.getElementById('grid');
+    
+    // Hover
+    gridEl.addEventListener('mousemove', (e) => {
+        if (!currentAsset) return;
+        
+        const rect = gridEl.getBoundingClientRect();
+        // Since we scaled, we need to correct coordinates
+        const x = (e.clientX - rect.left) / zoomLevel;
+        const y = (e.clientY - rect.top) / zoomLevel;
+        
+        const tileX = Math.floor(x / gridW);
+        const tileY = Math.floor(y / gridH);
+        
+        // Bounds check
+        const img = document.getElementById('image');
+        if (x < 0 || y < 0 || x > img.naturalWidth || y > img.naturalHeight) return;
+
+        // Snap
+        const snapX = tileX * gridW;
+        const snapY = tileY * gridH;
+        
+        const cursor = document.getElementById('cursor');
+        cursor.style.display = 'block';
+        cursor.style.width = gridW + 'px';
+        cursor.style.height = gridH + 'px';
+        cursor.style.left = snapX + 'px';
+        cursor.style.top = snapY + 'px';
+
+        const id = (tileY * cols) + tileX;
+        document.getElementById('coord-info').textContent = `Pixel: ${Math.floor(x)},${Math.floor(y)} | Tile: ${tileX},${tileY} | ID: ${id}`;
+    });
+
+    gridEl.addEventListener('mouseleave', () => {
+        document.getElementById('cursor').style.display = 'none';
+        document.getElementById('coord-info').textContent = 'Hover for coords';
+    });
+
+    // Selection
+    gridEl.addEventListener('click', (e) => {
+        if (!currentAsset) return;
+        const rect = gridEl.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / zoomLevel;
+        const y = (e.clientY - rect.top) / zoomLevel;
+        
+        const tileX = Math.floor(x / gridW);
+        const tileY = Math.floor(y / gridH);
+        const id = (tileY * cols) + tileX;
+        
+        selectTile(id);
+    });
+
+    function selectTile(id) {
+        currentTileId = id;
+        const selection = document.getElementById('selection');
+        const editor = document.getElementById('editor');
+        const noSel = document.getElementById('no-selection');
+
+        if (id === null) {
+            selection.style.display = 'none';
+            editor.style.display = 'none';
+            noSel.style.display = 'block';
+            return;
+        }
+
+        highlightTile(id);
+        
+        // Show editor
+        editor.style.display = 'flex';
+        noSel.style.display = 'none';
+        
+        // Load data
+        document.getElementById('prop-id').value = id;
+        
+        const assetName = getAssetName(currentAsset);
+        const data = tileDefinitions[assetName][id] || { category: 'Ground', collision: 'None', tags: '' };
+        
+        document.getElementById('prop-category').value = data.category || 'Ground';
+        document.getElementById('prop-collision').value = data.collision || 'None';
+        document.getElementById('prop-tags').value = Array.isArray(data.tags) ? data.tags.join(', ') : (data.tags || '');
+    }
+
+    function highlightTile(id) {
+        const selection = document.getElementById('selection');
+        
+        const tileY = Math.floor(id / cols);
+        const tileX = id % cols;
+        
+        selection.style.display = 'block';
+        selection.style.width = gridW + 'px';
+        selection.style.height = gridH + 'px';
+        selection.style.left = (tileX * gridW) + 'px';
+        selection.style.top = (tileY * gridH) + 'px';
+    }
+
+    // --- Annotation Logic ---
+    window.saveCurrentTile = function() {
+        if (!currentAsset || currentTileId === null) return;
+        
+        const assetName = getAssetName(currentAsset);
+        const category = document.getElementById('prop-category').value;
+        const collision = document.getElementById('prop-collision').value;
+        const tagsStr = document.getElementById('prop-tags').value;
+        
+        const tags = tagsStr.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        
+        tileDefinitions[assetName][currentTileId] = {
+            id: currentTileId,
+            category,
+            collision,
+            tags
+        };
+        
+        console.log(`Saved ${assetName} #${currentTileId}`, tileDefinitions[assetName][currentTileId]);
+    }
+    
+    window.clearCurrentTile = function() {
+        if (!currentAsset || currentTileId === null) return;
+        const assetName = getAssetName(currentAsset);
+        delete tileDefinitions[assetName][currentTileId];
+        
+        // Reset UI to defaults
+        document.getElementById('prop-category').value = 'Ground';
+        document.getElementById('prop-collision').value = 'None';
+        document.getElementById('prop-tags').value = '';
+    }
+
+    window.exportDefinitions = function() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tileDefinitions, null, 4));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "tile_definitions.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    init();
+</script>
+
+</body>
+</html>
